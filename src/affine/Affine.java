@@ -1,7 +1,6 @@
 package affine;
 
 import java.awt.BorderLayout;
-import java.awt.Dimension;
 import java.awt.Font;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -13,6 +12,9 @@ import java.awt.event.KeyEvent;
 import java.awt.event.KeyListener;
 import java.awt.geom.AffineTransform;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 import javax.swing.JButton;
 import javax.swing.JFrame;
 import javax.swing.JLabel;
@@ -43,17 +45,16 @@ public class Affine {
   public static double[] calculateAffine(Geometry geom) {
     AffineTransform at = AffineTransform.getScaleInstance(
         geom.desiredWidth / geom.fullWidth, geom.desiredHeight / geom.fullHeight);
-    System.out.println("Scale affine is " + at);
+    System.err.println("Scale affine is " + at);
     at.translate(geom.offsetX / geom.desiredWidth, geom.offsetY / geom.desiredHeight);
-    System.out.println("With translation affine is " + at);
+    System.err.println("With translation affine is " + at);
     double[] outputMatrix = new double[6];
     at.getMatrix(outputMatrix);
     return outputMatrix;
   }
 
   public static String asText(double[] data) {
-    StringBuilder output = new StringBuilder(
-        "xinput set-prop 'HUION PenTablet Pen' 'Coordinate Transformation Matrix' ");
+    StringBuilder output = new StringBuilder();
     int off = 0;
     int limit = data.length * 2;
     for (int i = 0; i < limit; i += 2) {
@@ -68,44 +69,42 @@ public class Affine {
   }
 
   public static void main(String[] args) {
-    final String COMMAND = "/usr/bin/xinput set-prop 'HUION PenTablet Pen' 'Coordinate Transformation Matrix' ";
     final Geometry geom = new Geometry(
         1920.0 + 1360.0, 1080.0,
         1280.0, 720.0,
         100.0, 145.0);
     if (args.length == 1 && "w".equalsIgnoreCase(args[0])) {
-      System.out.println("GUI mode!");
+      System.err.println("GUI mode!");
 
       JFrame frame = new JFrame("Affine Transform");
       frame.setDefaultCloseOperation(WindowConstants.EXIT_ON_CLOSE);
       Font font = new Font(Font.SANS_SERIF, Font.PLAIN, 30);
 
+      GridBagConstraints cons = new GridBagConstraints();
       JPanel lowPanel = new JPanel();
+      lowPanel.setLayout(new GridBagLayout());
       JTextField output = new JTextField();
-      output.setPreferredSize(new Dimension(800, 30));
       output.setFont(font);
       output.setEditable(false);
-      lowPanel.add(output);
+      cons.weightx = 1;
+      cons.fill = GridBagConstraints.HORIZONTAL;
+      cons.gridx = 0;
+      cons.gridy = 0;
+      lowPanel.add(output, cons);
       final ActionListener execute = e -> {
-        StringBuilder sb = new StringBuilder(COMMAND);
-        sb.append(asText(calculateAffine(geom)));
-        sb.append(" 0 0 1");
-        String command = sb.toString();
-        try {
-          System.out.println("Executing: " + command);
-          Runtime.getRuntime().exec(command);
-        } catch (IOException ioe) {
-          System.err.println("Exec failed: " + ioe.getMessage());
-        }
+        // return the calculated string, allow OS / shell script to use the data.
+        System.out.println(asText(calculateAffine(geom)));
+        System.exit(0);
       };
-      JButton trigger = new JButton("Execute");
+      JButton trigger = new JButton("Done");
       lowPanel.add(trigger);
+      cons.weightx = 0;
+      cons.gridx++;
       frame.add(lowPanel, BorderLayout.SOUTH);
 
       JPanel panel = new JPanel();
       frame.add(panel, BorderLayout.CENTER);
       panel.setLayout(new GridBagLayout());
-      GridBagConstraints cons = new GridBagConstraints();
       cons.insets = new Insets(5, 5, 5, 5);
 
       JLabel fullLabel = new JLabel("full:");
@@ -183,7 +182,7 @@ public class Affine {
             trigger.addActionListener(execute);
           } catch (NumberFormatException nfe) {
             // ignore this event, numbers are trash right now
-//                        System.out.println("NFE");
+//                        System.err.println("NFE");
             trigger.removeActionListener(execute);
           }
         }
@@ -209,14 +208,15 @@ public class Affine {
         geom.desiredHeight = Double.parseDouble(args[3]);
         geom.offsetX = Double.parseDouble(args[4]);
         geom.offsetY = Double.parseDouble(args[5]);
-        System.out.println("Transform: " + asText(calculateAffine(geom)));
+        System.err.println("Transform: " + asText(calculateAffine(geom)));
         return; // successful completion
       } catch (NumberFormatException nfe) {
       }
+    } else {
+      System.out.println("Usages: java affine.Affine w | <geometry>");
+      System.out.println("  w - prompt for geometry with GUI");
+      System.out.println("  <geometry> is fullwidth fullheight desiredwidth desiredheight offsetx offsety");
     }
-    System.out.println("Usages: java affine.Affine w | <geometry>");
-    System.out.println("  w - prompt for geometry with GUI");
-    System.out.println("  <geometry> is fullwidth fullheight desiredwidth desiredheight offsetx offsety");
   }
 //    [0.39, 0.00, 0.03] 
 //    [0.00, 0.66, 0.13]
