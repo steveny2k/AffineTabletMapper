@@ -170,7 +170,7 @@ public class Affine {
             } else if (source == fullHeightText) {
               geom.fullHeight = value;
             } else if (source == desiredWidthText) {
-              geom.desiredHeight = value;
+              geom.desiredWidth = value;
             } else if (source == desiredHeightText) {
               geom.desiredHeight = value;
             } else if (source == offsetWidthText) {
